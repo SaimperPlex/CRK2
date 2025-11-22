@@ -390,6 +390,8 @@ function createTextElement(text = 'Tu texto') {
     element.style.WebkitUserSelect = 'none';
     element.style.zIndex = '10';
     element.style.whiteSpace = 'nowrap';
+    element.style.transform = 'scale(1) rotate(0deg)'; // Inicializar transform
+    element.style.transformOrigin = 'center center';
     
     canvas.appendChild(element);
     
@@ -418,6 +420,8 @@ function createImageElement(src) {
     element.style.height = '150px';
     element.style.cursor = 'move';
     element.style.zIndex = '10';
+    element.style.transform = 'scale(1) rotate(0deg)'; // Inicializar transform
+    element.style.transformOrigin = 'center center';
     
     const img = document.createElement('img');
     img.src = src;
@@ -607,6 +611,7 @@ function saveState() {
             color: el.style.color,
             width: el.style.width,
             height: el.style.height,
+            transform: el.style.transform, 
             content: el.classList.contains('text-element') ? el.textContent : el.querySelector('img')?.src
         }))
     };
@@ -667,6 +672,8 @@ function restoreState(state) {
             el.style.zIndex = '10';
             el.style.userSelect = 'none';
             el.style.WebkitUserSelect = 'none';
+            el.style.transform = elData.transform || 'scale(1) rotate(0deg)'; // ⬅️ RESTAURAR TRANSFORM
+            el.style.transformOrigin = 'center center';
             
             setupElementEvents(el);
             EditorState.canvas.appendChild(el);
@@ -681,6 +688,8 @@ function restoreState(state) {
             el.style.height = elData.height;
             el.style.cursor = 'move';
             el.style.zIndex = '10';
+            el.style.transform = elData.transform || 'scale(1) rotate(0deg)'; 
+            el.style.transformOrigin = 'center center';
             
             const img = document.createElement('img');
             img.src = elData.content;
@@ -698,6 +707,7 @@ function restoreState(state) {
     });
 }
 
+console.log('✅ Sistema de gestos táctiles cargado (Pinch to Scale + Rotate)');
 function updateUndoRedoButtons() {
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
