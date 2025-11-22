@@ -1,7 +1,5 @@
 // ============================================
-// EDITOR MAIN - Sistema completo sin Fabric.js
-// Carga configuración desde localStorage (AdminPanel)
-// PARTE 1 DE 2
+// EDITOR MAIN - Primera Mitad con Touch Gestures
 // ============================================
 
 // Estado global del editor
@@ -73,12 +71,6 @@ function loadConfig() {
     const config = EditorState.configManager.getConfig();
     
     console.log('📦 Configuración cargada:', config);
-    console.log('📦 Productos:', config.products.length);
-    console.log('📦 Cliparts:', config.cliparts.length);
-    console.log('📦 Imágenes custom:', config.customImages.length);
-    console.log('📦 Colores:', config.colors);
-    console.log('📦 Fuentes:', config.fonts);
-    console.log('📦 Background:', config.welcomeBackground);
     
     if (!config.configured || config.products.length === 0) {
         console.warn('⚠️ No hay configuración. Redirigiendo al admin...');
@@ -100,14 +92,10 @@ function initializeWithConfig(config) {
         document.body.style.backgroundPosition = 'center';
         document.body.style.backgroundRepeat = 'no-repeat';
         document.body.style.backgroundAttachment = 'fixed';
-        console.log('✅ Background aplicado');
     }
     
     EditorState.colors = config.colors || ['#000000', '#FFFFFF', '#FF0000'];
     EditorState.fonts = config.fonts || ['Roboto', 'Montserrat', 'Bebas Neue'];
-    
-    console.log('✅ Colores cargados:', EditorState.colors);
-    console.log('✅ Fuentes cargadas:', EditorState.fonts);
     
     loadProducts(config.products);
     loadCliparts(config.cliparts);
@@ -244,7 +232,7 @@ function loadCustomImages(images) {
 }
 
 // ============================================
-// CARGAR PALETA DE COLORES (desde config)
+// CARGAR PALETA DE COLORES
 // ============================================
 function loadColorPalette() {
     const colorPickerPanel = document.getElementById('color-picker-panel');
@@ -279,13 +267,8 @@ function loadColorPalette() {
         colorBtn.title = color.toUpperCase();
         
         colorBtn.addEventListener('click', () => {
-            if (!EditorState.selectedElement) {
+            if (!EditorState.selectedElement || !EditorState.selectedElement.classList.contains('text-element')) {
                 alert('Primero selecciona un texto');
-                return;
-            }
-            
-            if (!EditorState.selectedElement.classList.contains('text-element')) {
-                alert('Solo puedes cambiar el color de textos');
                 return;
             }
             
@@ -299,25 +282,15 @@ function loadColorPalette() {
             colorBtn.style.borderWidth = '4px';
         });
         
-        colorBtn.addEventListener('mouseenter', () => {
-            colorBtn.style.transform = 'scale(1.15)';
-            colorBtn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-        });
-        
-        colorBtn.addEventListener('mouseleave', () => {
-            colorBtn.style.transform = 'scale(1)';
-            colorBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-        });
-        
         palette.appendChild(colorBtn);
     });
     
     colorPickerPanel.appendChild(palette);
-    console.log(`✅ ${EditorState.colors.length} colores cargados desde Admin Panel`);
+    console.log(`✅ ${EditorState.colors.length} colores cargados`);
 }
 
 // ============================================
-// CARGAR FUENTES (desde config)
+// CARGAR FUENTES
 // ============================================
 function loadFonts() {
     const list = document.getElementById('fonts-list');
@@ -343,17 +316,12 @@ function loadFonts() {
         list.appendChild(item);
     });
     
-    console.log(`✅ ${EditorState.fonts.length} fuentes cargadas desde Admin Panel`);
+    console.log(`✅ ${EditorState.fonts.length} fuentes cargadas`);
 }
 
 function applyFont(font, item) {
-    if (!EditorState.selectedElement) {
+    if (!EditorState.selectedElement || !EditorState.selectedElement.classList.contains('text-element')) {
         alert('Primero selecciona un texto en el canvas');
-        return;
-    }
-    
-    if (!EditorState.selectedElement.classList.contains('text-element')) {
-        alert('Solo puedes cambiar la fuente de textos');
         return;
     }
     
@@ -390,7 +358,7 @@ function createTextElement(text = 'Tu texto') {
     element.style.WebkitUserSelect = 'none';
     element.style.zIndex = '10';
     element.style.whiteSpace = 'nowrap';
-    element.style.transform = 'scale(1) rotate(0deg)'; // Inicializar transform
+    element.style.transform = 'scale(1) rotate(0deg)';
     element.style.transformOrigin = 'center center';
     
     canvas.appendChild(element);
@@ -407,7 +375,7 @@ function createTextElement(text = 'Tu texto') {
     selectElement(element);
     saveState();
     
-    console.log('✅ Texto agregado al canvas (centrado)');
+    console.log('✅ Texto agregado al canvas');
 }
 
 function createImageElement(src) {
@@ -420,7 +388,7 @@ function createImageElement(src) {
     element.style.height = '150px';
     element.style.cursor = 'move';
     element.style.zIndex = '10';
-    element.style.transform = 'scale(1) rotate(0deg)'; // Inicializar transform
+    element.style.transform = 'scale(1) rotate(0deg)';
     element.style.transformOrigin = 'center center';
     
     const img = document.createElement('img');
@@ -443,21 +411,53 @@ function createImageElement(src) {
 }
 
 // ============================================
-// FIN DE LA PRIMERA MITAD
-// ============================================
-
-// ============================================
-// EDITOR MAIN - PARTE 2 DE 2
-// Eventos, Gestión de Estado, Exportación
-// ============================================
-
-// ============================================
-// EVENTOS DE ELEMENTOS
+// SISTEMA DE EVENTOS CON GESTOS TÁCTILES
 // ============================================
 function setupElementEvents(element) {
     let isEditing = false;
     let touchTimer = null;
     
+    // Variables para multi-touch (escala y rotación)
+    let initialDistance = 0;
+    let initialAngle = 0;
+    let initialScale = 1;
+    let initialRotation = 0;
+    let isMultiTouch = false;
+    
+    // Obtener transformación actual
+    function getCurrentTransform() {
+        const transform = element.style.transform || '';
+        const scaleMatch = transform.match(/scale\(([\d.]+)\)/);
+        const rotateMatch = transform.match(/rotate\(([-\d.]+)deg\)/);
+        
+        return {
+            scale: scaleMatch ? parseFloat(scaleMatch[1]) : 1,
+            rotation: rotateMatch ? parseFloat(rotateMatch[1]) : 0
+        };
+    }
+    
+    // Aplicar transformación
+    function applyTransform(scale, rotation) {
+        element.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+    }
+    
+    // Calcular distancia entre dos toques
+    function getDistance(touch1, touch2) {
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    // Calcular ángulo entre dos toques
+    function getAngle(touch1, touch2) {
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        return Math.atan2(dy, dx) * 180 / Math.PI;
+    }
+    
+    // ============================================
+    // EVENTOS MOUSE (Desktop)
+    // ============================================
     element.addEventListener('mousedown', (e) => {
         if (element.classList.contains('text-element') && isEditing) {
             return;
@@ -470,6 +470,9 @@ function setupElementEvents(element) {
         startDrag(e, element);
     });
     
+    // ============================================
+    // EVENTOS DE TEXTO (Edición)
+    // ============================================
     if (element.classList.contains('text-element')) {
         element.addEventListener('dblclick', (e) => {
             e.stopPropagation();
@@ -493,32 +496,104 @@ function setupElementEvents(element) {
         });
     }
     
+    // ============================================
+    // EVENTOS TOUCH (Mobile/Tablet)
+    // ============================================
     element.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
         
         selectElement(element);
         
-        if (element.classList.contains('text-element')) {
-            touchTimer = setTimeout(() => {
-                enterEditMode(element);
-                isEditing = true;
-                touchTimer = null;
-            }, 500);
+        const touches = e.touches;
+        
+        // UN DEDO - Mover
+        if (touches.length === 1) {
+            isMultiTouch = false;
+            
+            // Timer para editar texto (mantener presionado)
+            if (element.classList.contains('text-element')) {
+                touchTimer = setTimeout(() => {
+                    enterEditMode(element);
+                    isEditing = true;
+                    touchTimer = null;
+                }, 500);
+            }
+            
+            // Cancelar timer si se mueve
+            const cancelTimer = () => {
+                if (touchTimer) {
+                    clearTimeout(touchTimer);
+                    touchTimer = null;
+                }
+            };
+            
+            element.addEventListener('touchmove', cancelTimer, { once: true, passive: true });
+            startDrag(touches[0], element);
         }
         
-        const touchMoveHandler = () => {
+        // DOS DEDOS - Escalar y Rotar
+        else if (touches.length === 2) {
+            isMultiTouch = true;
+            
+            // Cancelar timer de edición
             if (touchTimer) {
                 clearTimeout(touchTimer);
                 touchTimer = null;
             }
-        };
-        
-        element.addEventListener('touchmove', touchMoveHandler, { once: true, passive: true });
-        startDrag(e.touches[0], element);
+            
+            // Cancelar drag si estaba activo
+            EditorState.isDragging = false;
+            
+            // Guardar estado inicial
+            const currentTransform = getCurrentTransform();
+            initialScale = currentTransform.scale;
+            initialRotation = currentTransform.rotation;
+            initialDistance = getDistance(touches[0], touches[1]);
+            initialAngle = getAngle(touches[0], touches[1]);
+            
+            element.style.opacity = '0.8';
+            
+            console.log('👆👆 Gesto multi-touch iniciado');
+        }
     }, { passive: false });
     
-    element.addEventListener('touchend', () => {
+    // TOUCH MOVE - Actualizar transformación
+    element.addEventListener('touchmove', (e) => {
+        if (isMultiTouch && e.touches.length === 2) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            
+            // Calcular nueva escala
+            const currentDistance = getDistance(touch1, touch2);
+            const scaleChange = currentDistance / initialDistance;
+            let newScale = initialScale * scaleChange;
+            
+            // Limitar escala
+            newScale = Math.max(0.3, Math.min(5, newScale));
+            
+            // Calcular nueva rotación
+            const currentAngle = getAngle(touch1, touch2);
+            const rotationChange = currentAngle - initialAngle;
+            let newRotation = initialRotation + rotationChange;
+            
+            // Aplicar transformación
+            applyTransform(newScale, newRotation);
+        }
+    }, { passive: false });
+    
+    // TOUCH END - Finalizar transformación
+    element.addEventListener('touchend', (e) => {
+        if (isMultiTouch) {
+            element.style.opacity = '1';
+            isMultiTouch = false;
+            saveState();
+            console.log('✅ Transformación aplicada');
+        }
+        
         if (touchTimer) {
             clearTimeout(touchTimer);
             touchTimer = null;
@@ -526,6 +601,16 @@ function setupElementEvents(element) {
     });
 }
 
+console.log('✅ Primera mitad del editor cargada con gestos táctiles');
+
+// ============================================
+// EDITOR MAIN - SEGUNDA MITAD
+// Funciones auxiliares, estado y exportación
+// ============================================
+
+// ============================================
+// FUNCIONES AUXILIARES
+// ============================================
 function enterEditMode(element) {
     element.style.cursor = 'text';
     element.style.userSelect = 'text';
@@ -573,6 +658,8 @@ function startDrag(e, element) {
         const clientX = moveEvent.clientX || moveEvent.touches?.[0]?.clientX;
         const clientY = moveEvent.clientY || moveEvent.touches?.[0]?.clientY;
         
+        if (!clientX || !clientY) return;
+        
         const newX = clientX - canvasRect.left - EditorState.dragOffset.x;
         const newY = clientY - canvasRect.top - EditorState.dragOffset.y;
         
@@ -611,7 +698,7 @@ function saveState() {
             color: el.style.color,
             width: el.style.width,
             height: el.style.height,
-            transform: el.style.transform, 
+            transform: el.style.transform,
             content: el.classList.contains('text-element') ? el.textContent : el.querySelector('img')?.src
         }))
     };
@@ -672,7 +759,7 @@ function restoreState(state) {
             el.style.zIndex = '10';
             el.style.userSelect = 'none';
             el.style.WebkitUserSelect = 'none';
-            el.style.transform = elData.transform || 'scale(1) rotate(0deg)'; // ⬅️ RESTAURAR TRANSFORM
+            el.style.transform = elData.transform || 'scale(1) rotate(0deg)';
             el.style.transformOrigin = 'center center';
             
             setupElementEvents(el);
@@ -688,7 +775,7 @@ function restoreState(state) {
             el.style.height = elData.height;
             el.style.cursor = 'move';
             el.style.zIndex = '10';
-            el.style.transform = elData.transform || 'scale(1) rotate(0deg)'; 
+            el.style.transform = elData.transform || 'scale(1) rotate(0deg)';
             el.style.transformOrigin = 'center center';
             
             const img = document.createElement('img');
@@ -707,7 +794,6 @@ function restoreState(state) {
     });
 }
 
-console.log('✅ Sistema de gestos táctiles cargado (Pinch to Scale + Rotate)');
 function updateUndoRedoButtons() {
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
@@ -726,9 +812,10 @@ function deleteSelected() {
     EditorState.elements = EditorState.elements.filter(el => el !== EditorState.selectedElement);
     EditorState.selectedElement = null;
     
-    document.getElementById('delete-btn').disabled = true;
-    saveState();
+    const deleteBtn = document.getElementById('delete-btn');
+    if (deleteBtn) deleteBtn.disabled = true;
     
+    saveState();
     console.log('🗑️ Elemento eliminado');
 }
 
@@ -747,27 +834,21 @@ function resetCanvas() {
     });
     
     updateUndoRedoButtons();
-    document.getElementById('delete-btn').disabled = true;
+    
+    const deleteBtn = document.getElementById('delete-btn');
+    if (deleteBtn) deleteBtn.disabled = true;
     
     saveState();
-    
     console.log('🔄 Canvas reiniciado');
 }
 
 function changeTextColor(color) {
-    if (!EditorState.selectedElement) {
-        alert('Primero selecciona un texto');
-        return;
-    }
-    
-    if (!EditorState.selectedElement.classList.contains('text-element')) {
-        alert('Solo puedes cambiar el color de textos');
+    if (!EditorState.selectedElement || !EditorState.selectedElement.classList.contains('text-element')) {
         return;
     }
     
     EditorState.selectedElement.style.color = color;
     saveState();
-    
     console.log('🎨 Color cambiado:', color);
 }
 
@@ -779,10 +860,12 @@ function toggleTheme() {
     const isDark = document.body.classList.contains('dark-mode');
     
     const icon = document.getElementById('theme-icon');
-    if (isDark) {
-        icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
-    } else {
-        icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+    if (icon) {
+        if (isDark) {
+            icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+        } else {
+            icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+        }
     }
     
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
@@ -823,7 +906,7 @@ function toggleColorPicker() {
 }
 
 // ============================================
-// GUARDAR DISEÑO Y EXPORTAR (CON DOMEXPORTER)
+// GUARDAR DISEÑO Y EXPORTAR
 // ============================================
 function saveDesign() {
     if (!EditorState.currentProduct) {
@@ -847,7 +930,7 @@ async function confirmSave() {
         const saveModal = document.getElementById('save-modal');
         if (saveModal) saveModal.classList.remove('active');
         
-        // ✅ EXPORTAR IMAGEN CON DOMEXPORTER
+        // Verificar DOMExporter
         if (!window.DOMExporter) {
             throw new Error('DOMExporter no está cargado. Verifica que export-dom.js esté incluido.');
         }
@@ -873,7 +956,8 @@ async function confirmSave() {
                 fontFamily: el.style.fontFamily,
                 color: el.style.color,
                 width: el.style.width,
-                height: el.style.height
+                height: el.style.height,
+                transform: el.style.transform
             })),
             timestamp: new Date().toISOString()
         };
@@ -1003,9 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     saveState();
     
-    console.log('✅ Editor inicializado correctamente');
+    console.log('✅ Editor inicializado correctamente con gestos táctiles');
 });
 
-// ============================================
-// FIN DE LA SEGUNDA MITAD
-// ============================================
+console.log('✅ Segunda mitad del editor cargada');
