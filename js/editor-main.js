@@ -392,10 +392,14 @@ function createImageElement(src) {
 // ============================================
 function setupElementEvents(element) {
     let isEditing = false;
-    let touchTimer = null;
     let isMultiTouch = false;
     let touchMoveListener = null;
     let touchEndListener = null;
+    
+    // Estado para detectar doble tap
+    let lastTapTime = 0;
+    let lastTapElement = null;
+    let doubleTapTimer = null;
     
     // Variables para transformación suave
     let transformState = {
@@ -454,16 +458,20 @@ function setupElementEvents(element) {
         startDrag(e, element);
     });
     
+    // Doble click en desktop para editar texto
+    if (isTextElement) {
+        element.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            enterEditMode(element);
+            isEditing = true;
+        });
+    }
+    
     // ============================================
     // TEXTO - Edición
     // ============================================
     if (isTextElement) {
-        element.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            enterEditMode(element);
-            isEditing = true;
-        });
-        
         element.addEventListener('blur', () => {
             isEditing = false;
             element.style.cursor = 'move';
@@ -492,30 +500,32 @@ function setupElementEvents(element) {
         const touches = e.touches;
         
         // ============================================
-        // UN DEDO - Mover
+        // UN DEDO - Detectar doble tap o mover
         // ============================================
         if (touches.length === 1) {
             isMultiTouch = false;
             
-            // Timer para editar texto
-            if (isTextElement) {
-                touchTimer = setTimeout(() => {
-                    enterEditMode(element);
-                    isEditing = true;
-                    touchTimer = null;
-                }, 500);
+            const now = Date.now();
+            const isDoubleTap = lastTapElement === element && (now - lastTapTime) < 300;
+            lastTapTime = now;
+            lastTapElement = element;
+            
+            if (isDoubleTap && isTextElement) {
+                // DOBLE TAP - Abrir teclado inmediatamente
+                e.preventDefault();
+                clearTimeout(doubleTapTimer);
+                enterEditMode(element);
+                isEditing = true;
+                console.log('⌨️ Doble tap - Teclado abierto');
+            } else {
+                // SINGLE TAP - Prepararse para mover
+                doubleTapTimer = setTimeout(() => {
+                    // Solo hacer drag si no fue doble tap
+                    if (!isEditing && touches.length === 1) {
+                        startDrag(touches[0], element);
+                    }
+                }, 250);
             }
-            
-            // Cancelar timer al mover
-            const cancelTimer = () => {
-                if (touchTimer) {
-                    clearTimeout(touchTimer);
-                    touchTimer = null;
-                }
-            };
-            
-            element.addEventListener('touchmove', cancelTimer, { once: true, passive: true });
-            startDrag(touches[0], element);
         }
         
         // ============================================
@@ -524,11 +534,8 @@ function setupElementEvents(element) {
         else if (touches.length === 2) {
             isMultiTouch = true;
             
-            // Cancelar timer y drag
-            if (touchTimer) {
-                clearTimeout(touchTimer);
-                touchTimer = null;
-            }
+            // Cancelar timer de tap
+            clearTimeout(doubleTapTimer);
             EditorState.isDragging = false;
             
             // Guardar estado inicial
@@ -552,7 +559,7 @@ function setupElementEvents(element) {
             element.style.opacity = '0.9';
             
             // ============================================
-            // TOUCH MOVE - Actualizar transformación (MÁS FLUIDO PARA TEXTO)
+            // TOUCH MOVE - Actualizar transformación
             // ============================================
             touchMoveListener = (moveEvent) => {
                 if (!isMultiTouch || moveEvent.touches.length !== 2) return;
@@ -563,7 +570,7 @@ function setupElementEvents(element) {
                 const t1 = moveEvent.touches[0];
                 const t2 = moveEvent.touches[1];
                 
-                // Calcular escala con suavizado más agresivo para texto
+                // Calcular escala con suavizado
                 const currentDistance = getDistance(t1, t2);
                 const scaleRatio = currentDistance / transformState.initialDistance;
                 let newScale = transformState.initialScale * scaleRatio;
@@ -571,7 +578,7 @@ function setupElementEvents(element) {
                 // Límites de escala
                 newScale = Math.max(0.2, Math.min(6, newScale));
                 
-                // Suavizado más agresivo para texto (evita saltos)
+                // Suavizado más agresivo para texto
                 const smoothingFactor = isTextElement ? 0.9 : 0.8;
                 newScale = transformState.lastScale + (newScale - transformState.lastScale) * smoothingFactor;
                 transformState.lastScale = newScale;
@@ -613,23 +620,19 @@ function setupElementEvents(element) {
                 }
             };
             
-            // Agregar listeners con passive: false para preventDefault
+            // Agregar listeners con passive: false
             document.addEventListener('touchmove', touchMoveListener, { passive: false });
             document.addEventListener('touchend', touchEndListener, { passive: false });
         }
     }, { passive: false });
     
-    // TOUCH END en el elemento
+    // TOUCH END en el elemento - Limpiar timer
     element.addEventListener('touchend', () => {
-        if (touchTimer) {
-            clearTimeout(touchTimer);
-            touchTimer = null;
-        }
+        clearTimeout(doubleTapTimer);
     });
 }
 
 console.log('✅ Primera mitad optimizada cargada - Gestos fluidos activados');
-
 // ============================================
 // EDITOR MAIN - SEGUNDA MITAD OPTIMIZADA
 // ============================================
@@ -643,11 +646,14 @@ function enterEditMode(element) {
     element.style.WebkitUserSelect = 'text';
     element.focus();
     
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+    // Pequeña pausa para asegurar que el foco esté listo
+    setTimeout(() => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }, 10);
     
     console.log('✏️ Modo edición activado');
 }
@@ -974,7 +980,14 @@ function saveDesign() {
     }
     
     const modal = document.getElementById('save-modal');
-    if (modal) modal.classList.add('active');
+    if (modal) {
+        modal.classList.add('active');
+        // Enfocar el input automáticamente
+        setTimeout(() => {
+            const input = document.getElementById('client-name-input');
+            if (input) input.focus();
+        }, 100);
+    }
 }
 
 async function confirmSave() {
@@ -1128,6 +1141,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const successModal = document.getElementById('success-modal');
             if (successModal) successModal.classList.remove('active');
             resetCanvas();
+        });
+    }
+    
+    // Permitir Enter en el input del modal para guardar
+    const clientNameInput = document.getElementById('client-name-input');
+    if (clientNameInput) {
+        clientNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmSave();
+            }
         });
     }
     
