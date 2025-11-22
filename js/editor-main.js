@@ -318,10 +318,10 @@ function createTextElement(text = 'Tu texto') {
     element.textContent = text;
     element.style.cssText = `
         position: absolute;
-        fontSize: 32px;
+        font-size: 48px;
         font-family: ${EditorState.fonts[0] || 'Roboto'};
         color: ${EditorState.colors[0] || '#000000'};
-        font-weight: bold;
+        font-weight: normal;
         padding: 8px;
         cursor: move;
         user-select: none;
@@ -332,6 +332,8 @@ function createTextElement(text = 'Tu texto') {
         transform-origin: center center;
         touch-action: none;
         will-change: transform;
+        text-shadow: none;
+        box-shadow: none;
     `;
     
     canvas.appendChild(element);
