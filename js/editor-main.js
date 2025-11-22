@@ -407,6 +407,9 @@ function setupElementEvents(element) {
         lastRotation: 0
     };
     
+    // Detectar si es texto (necesita optimizaciones especiales)
+    const isTextElement = element.classList.contains('text-element');
+    
     // Obtener transformación actual (optimizada)
     const getCurrentTransform = () => {
         const transform = element.style.transform || '';
@@ -442,7 +445,7 @@ function setupElementEvents(element) {
     // MOUSE EVENTS (Desktop)
     // ============================================
     element.addEventListener('mousedown', (e) => {
-        if (element.classList.contains('text-element') && isEditing) return;
+        if (isTextElement && isEditing) return;
         
         e.preventDefault();
         e.stopPropagation();
@@ -454,7 +457,7 @@ function setupElementEvents(element) {
     // ============================================
     // TEXTO - Edición
     // ============================================
-    if (element.classList.contains('text-element')) {
+    if (isTextElement) {
         element.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             enterEditMode(element);
@@ -495,7 +498,7 @@ function setupElementEvents(element) {
             isMultiTouch = false;
             
             // Timer para editar texto
-            if (element.classList.contains('text-element')) {
+            if (isTextElement) {
                 touchTimer = setTimeout(() => {
                     enterEditMode(element);
                     isEditing = true;
@@ -516,7 +519,7 @@ function setupElementEvents(element) {
         }
         
         // ============================================
-        // DOS DEDOS - Escalar y Rotar (OPTIMIZADO)
+        // DOS DEDOS - Escalar y Rotar (OPTIMIZADO PARA TEXTO)
         // ============================================
         else if (touches.length === 2) {
             isMultiTouch = true;
@@ -539,11 +542,17 @@ function setupElementEvents(element) {
                 lastRotation: currentTransform.rotation
             };
             
+            // Para texto, desactivar temporalmente contentEditable
+            if (isTextElement) {
+                element.contentEditable = false;
+                element.style.pointerEvents = 'none';
+            }
+            
             element.style.transition = 'opacity 0.1s ease';
             element.style.opacity = '0.9';
             
             // ============================================
-            // TOUCH MOVE - Actualizar transformación en tiempo real
+            // TOUCH MOVE - Actualizar transformación (MÁS FLUIDO PARA TEXTO)
             // ============================================
             touchMoveListener = (moveEvent) => {
                 if (!isMultiTouch || moveEvent.touches.length !== 2) return;
@@ -554,16 +563,17 @@ function setupElementEvents(element) {
                 const t1 = moveEvent.touches[0];
                 const t2 = moveEvent.touches[1];
                 
-                // Calcular escala con suavizado
+                // Calcular escala con suavizado más agresivo para texto
                 const currentDistance = getDistance(t1, t2);
                 const scaleRatio = currentDistance / transformState.initialDistance;
                 let newScale = transformState.initialScale * scaleRatio;
                 
-                // Límites de escala más amplios
+                // Límites de escala
                 newScale = Math.max(0.2, Math.min(6, newScale));
                 
-                // Suavizado de escala para evitar saltos
-                newScale = transformState.lastScale + (newScale - transformState.lastScale) * 0.8;
+                // Suavizado más agresivo para texto (evita saltos)
+                const smoothingFactor = isTextElement ? 0.9 : 0.8;
+                newScale = transformState.lastScale + (newScale - transformState.lastScale) * smoothingFactor;
                 transformState.lastScale = newScale;
                 
                 // Calcular rotación con suavizado
@@ -572,7 +582,7 @@ function setupElementEvents(element) {
                 let newRotation = transformState.initialRotation + angleDiff;
                 
                 // Suavizado de rotación
-                newRotation = transformState.lastRotation + (newRotation - transformState.lastRotation) * 0.8;
+                newRotation = transformState.lastRotation + (newRotation - transformState.lastRotation) * smoothingFactor;
                 transformState.lastRotation = newRotation;
                 
                 // Aplicar transformación fluida
@@ -587,6 +597,12 @@ function setupElementEvents(element) {
                     element.style.opacity = '1';
                     element.style.transition = '';
                     isMultiTouch = false;
+                    
+                    // Restaurar contentEditable para texto
+                    if (isTextElement) {
+                        element.contentEditable = true;
+                        element.style.pointerEvents = 'auto';
+                    }
                     
                     // Limpiar listeners
                     document.removeEventListener('touchmove', touchMoveListener);
