@@ -1,5 +1,6 @@
 // ============================================
-// EDITOR MAIN - Primera Mitad con Touch Gestures
+// EDITOR MAIN - Primera Mitad OPTIMIZADA
+// Gestos táctiles fluidos y responsivos
 // ============================================
 
 // Estado global del editor
@@ -19,7 +20,7 @@ const EditorState = {
 };
 
 // ============================================
-// CONFIG MANAGER (Mini versión para el editor)
+// CONFIG MANAGER
 // ============================================
 class ConfigManager {
     constructor() {
@@ -70,10 +71,9 @@ function loadConfig() {
     EditorState.configManager = new ConfigManager();
     const config = EditorState.configManager.getConfig();
     
-    console.log('📦 Configuración cargada:', config);
+    console.log('📦 Configuración cargada');
     
     if (!config.configured || config.products.length === 0) {
-        console.warn('⚠️ No hay configuración. Redirigiendo al admin...');
         alert('No hay productos configurados. Redirigiendo al panel de administración...');
         setTimeout(() => {
             window.location.href = 'admin.html';
@@ -103,7 +103,7 @@ function initializeWithConfig(config) {
     loadFonts();
     loadColorPalette();
     
-    console.log('✅ Editor inicializado con configuración');
+    console.log('✅ Editor inicializado');
 }
 
 // ============================================
@@ -136,8 +136,6 @@ function loadProducts(products) {
         card.addEventListener('click', () => selectProduct(product, card));
         grid.appendChild(card);
     });
-    
-    console.log(`✅ ${products.length} productos cargados`);
 }
 
 function selectProduct(product, card) {
@@ -173,12 +171,10 @@ function selectProduct(product, card) {
         
         canvas.insertBefore(productImg, canvas.firstChild);
     }
-    
-    console.log('✅ Producto seleccionado:', product.name);
 }
 
 // ============================================
-// CARGAR CLIPARTS/STICKERS
+// CARGAR CLIPARTS Y OTROS
 // ============================================
 function loadCliparts(cliparts) {
     const list = document.getElementById('cliparts-list');
@@ -201,13 +197,8 @@ function loadCliparts(cliparts) {
         item.addEventListener('click', () => createImageElement(clipart.image));
         list.appendChild(item);
     });
-    
-    console.log(`✅ ${cliparts.length} stickers cargados`);
 }
 
-// ============================================
-// CARGAR IMÁGENES PERSONALIZADAS
-// ============================================
 function loadCustomImages(images) {
     const list = document.getElementById('custom-images-list');
     list.innerHTML = '';
@@ -225,15 +216,11 @@ function loadCustomImages(images) {
             item.addEventListener('click', () => createImageElement(image.image));
             list.appendChild(item);
         });
-        console.log(`✅ ${images.length} imágenes personalizadas cargadas`);
     } else {
         list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No hay imágenes personalizadas</p>';
     }
 }
 
-// ============================================
-// CARGAR PALETA DE COLORES
-// ============================================
 function loadColorPalette() {
     const colorPickerPanel = document.getElementById('color-picker-panel');
     if (!colorPickerPanel) return;
@@ -260,11 +247,8 @@ function loadColorPalette() {
             border: 3px solid var(--border-color);
             cursor: pointer;
             transition: all 0.2s;
-            position: relative;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         `;
-        
-        colorBtn.title = color.toUpperCase();
         
         colorBtn.addEventListener('click', () => {
             if (!EditorState.selectedElement || !EditorState.selectedElement.classList.contains('text-element')) {
@@ -273,38 +257,26 @@ function loadColorPalette() {
             }
             
             changeTextColor(color);
-            
-            document.querySelectorAll('.color-palette-btn').forEach(btn => {
-                btn.style.borderColor = 'var(--border-color)';
-                btn.style.borderWidth = '3px';
-            });
-            colorBtn.style.borderColor = 'var(--accent-color)';
-            colorBtn.style.borderWidth = '4px';
         });
         
         palette.appendChild(colorBtn);
     });
     
     colorPickerPanel.appendChild(palette);
-    console.log(`✅ ${EditorState.colors.length} colores cargados`);
 }
 
-// ============================================
-// CARGAR FUENTES
-// ============================================
 function loadFonts() {
     const list = document.getElementById('fonts-list');
     list.innerHTML = '';
     
     if (!EditorState.fonts || EditorState.fonts.length === 0) {
-        list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No hay fuentes configuradas</p>';
+        list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No hay fuentes</p>';
         return;
     }
     
     EditorState.fonts.forEach(font => {
         const item = document.createElement('div');
         item.className = 'font-item';
-        item.dataset.font = font;
         
         const preview = document.createElement('div');
         preview.className = 'font-preview';
@@ -315,13 +287,11 @@ function loadFonts() {
         item.addEventListener('click', () => applyFont(font, item));
         list.appendChild(item);
     });
-    
-    console.log(`✅ ${EditorState.fonts.length} fuentes cargadas`);
 }
 
 function applyFont(font, item) {
     if (!EditorState.selectedElement || !EditorState.selectedElement.classList.contains('text-element')) {
-        alert('Primero selecciona un texto en el canvas');
+        alert('Primero selecciona un texto');
         return;
     }
     
@@ -333,7 +303,6 @@ function applyFont(font, item) {
     item.classList.add('selected');
     
     saveState();
-    console.log('✅ Fuente aplicada:', font);
 }
 
 // ============================================
@@ -347,19 +316,23 @@ function createTextElement(text = 'Tu texto') {
     element.className = 'canvas-element text-element';
     element.contentEditable = true;
     element.textContent = text;
-    element.style.position = 'absolute';
-    element.style.fontSize = '32px';
-    element.style.fontFamily = EditorState.fonts[0] || 'Roboto';
-    element.style.color = EditorState.colors[0] || '#000000';
-    element.style.fontWeight = 'bold';
-    element.style.padding = '8px';
-    element.style.cursor = 'move';
-    element.style.userSelect = 'none';
-    element.style.WebkitUserSelect = 'none';
-    element.style.zIndex = '10';
-    element.style.whiteSpace = 'nowrap';
-    element.style.transform = 'scale(1) rotate(0deg)';
-    element.style.transformOrigin = 'center center';
+    element.style.cssText = `
+        position: absolute;
+        fontSize: 32px;
+        font-family: ${EditorState.fonts[0] || 'Roboto'};
+        color: ${EditorState.colors[0] || '#000000'};
+        font-weight: bold;
+        padding: 8px;
+        cursor: move;
+        user-select: none;
+        -webkit-user-select: none;
+        z-index: 10;
+        white-space: nowrap;
+        transform: scale(1) rotate(0deg);
+        transform-origin: center center;
+        touch-action: none;
+        will-change: transform;
+    `;
     
     canvas.appendChild(element);
     
@@ -374,29 +347,33 @@ function createTextElement(text = 'Tu texto') {
     EditorState.elements.push(element);
     selectElement(element);
     saveState();
-    
-    console.log('✅ Texto agregado al canvas');
 }
 
 function createImageElement(src) {
     const element = document.createElement('div');
     element.className = 'canvas-element image-element';
-    element.style.position = 'absolute';
-    element.style.left = '100px';
-    element.style.top = '100px';
-    element.style.width = '150px';
-    element.style.height = '150px';
-    element.style.cursor = 'move';
-    element.style.zIndex = '10';
-    element.style.transform = 'scale(1) rotate(0deg)';
-    element.style.transformOrigin = 'center center';
+    element.style.cssText = `
+        position: absolute;
+        left: 100px;
+        top: 100px;
+        width: 150px;
+        height: 150px;
+        cursor: move;
+        z-index: 10;
+        transform: scale(1) rotate(0deg);
+        transform-origin: center center;
+        touch-action: none;
+        will-change: transform;
+    `;
     
     const img = document.createElement('img');
     img.src = src;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'contain';
-    img.style.pointerEvents = 'none';
+    img.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        pointer-events: none;
+    `;
     img.draggable = false;
     
     element.appendChild(img);
@@ -406,26 +383,30 @@ function createImageElement(src) {
     EditorState.elements.push(element);
     selectElement(element);
     saveState();
-    
-    console.log('✅ Imagen agregada al canvas');
 }
 
 // ============================================
-// SISTEMA DE EVENTOS CON GESTOS TÁCTILES
+// SISTEMA DE EVENTOS OPTIMIZADO Y FLUIDO
 // ============================================
 function setupElementEvents(element) {
     let isEditing = false;
     let touchTimer = null;
-    
-    // Variables para multi-touch (escala y rotación)
-    let initialDistance = 0;
-    let initialAngle = 0;
-    let initialScale = 1;
-    let initialRotation = 0;
     let isMultiTouch = false;
+    let touchMoveListener = null;
+    let touchEndListener = null;
     
-    // Obtener transformación actual
-    function getCurrentTransform() {
+    // Variables para transformación suave
+    let transformState = {
+        initialDistance: 0,
+        initialAngle: 0,
+        initialScale: 1,
+        initialRotation: 0,
+        lastScale: 1,
+        lastRotation: 0
+    };
+    
+    // Obtener transformación actual (optimizada)
+    const getCurrentTransform = () => {
         const transform = element.style.transform || '';
         const scaleMatch = transform.match(/scale\(([\d.]+)\)/);
         const rotateMatch = transform.match(/rotate\(([-\d.]+)deg\)/);
@@ -434,34 +415,32 @@ function setupElementEvents(element) {
             scale: scaleMatch ? parseFloat(scaleMatch[1]) : 1,
             rotation: rotateMatch ? parseFloat(rotateMatch[1]) : 0
         };
-    }
+    };
     
-    // Aplicar transformación
-    function applyTransform(scale, rotation) {
-        element.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-    }
+    // Aplicar transformación con requestAnimationFrame para fluidez
+    const applyTransform = (scale, rotation) => {
+        requestAnimationFrame(() => {
+            element.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+        });
+    };
     
-    // Calcular distancia entre dos toques
-    function getDistance(touch1, touch2) {
-        const dx = touch2.clientX - touch1.clientX;
-        const dy = touch2.clientY - touch1.clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
+    // Calcular distancia (optimizada)
+    const getDistance = (t1, t2) => {
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        return Math.hypot(dx, dy);
+    };
     
-    // Calcular ángulo entre dos toques
-    function getAngle(touch1, touch2) {
-        const dx = touch2.clientX - touch1.clientX;
-        const dy = touch2.clientY - touch1.clientY;
-        return Math.atan2(dy, dx) * 180 / Math.PI;
-    }
+    // Calcular ángulo (optimizada)
+    const getAngle = (t1, t2) => {
+        return Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
+    };
     
     // ============================================
-    // EVENTOS MOUSE (Desktop)
+    // MOUSE EVENTS (Desktop)
     // ============================================
     element.addEventListener('mousedown', (e) => {
-        if (element.classList.contains('text-element') && isEditing) {
-            return;
-        }
+        if (element.classList.contains('text-element') && isEditing) return;
         
         e.preventDefault();
         e.stopPropagation();
@@ -471,7 +450,7 @@ function setupElementEvents(element) {
     });
     
     // ============================================
-    // EVENTOS DE TEXTO (Edición)
+    // TEXTO - Edición
     // ============================================
     if (element.classList.contains('text-element')) {
         element.addEventListener('dblclick', (e) => {
@@ -497,7 +476,7 @@ function setupElementEvents(element) {
     }
     
     // ============================================
-    // EVENTOS TOUCH (Mobile/Tablet)
+    // TOUCH START - Detectar gestos
     // ============================================
     element.addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -507,11 +486,13 @@ function setupElementEvents(element) {
         
         const touches = e.touches;
         
+        // ============================================
         // UN DEDO - Mover
+        // ============================================
         if (touches.length === 1) {
             isMultiTouch = false;
             
-            // Timer para editar texto (mantener presionado)
+            // Timer para editar texto
             if (element.classList.contains('text-element')) {
                 touchTimer = setTimeout(() => {
                     enterEditMode(element);
@@ -520,7 +501,7 @@ function setupElementEvents(element) {
                 }, 500);
             }
             
-            // Cancelar timer si se mueve
+            // Cancelar timer al mover
             const cancelTimer = () => {
                 if (touchTimer) {
                     clearTimeout(touchTimer);
@@ -532,68 +513,96 @@ function setupElementEvents(element) {
             startDrag(touches[0], element);
         }
         
-        // DOS DEDOS - Escalar y Rotar
+        // ============================================
+        // DOS DEDOS - Escalar y Rotar (OPTIMIZADO)
+        // ============================================
         else if (touches.length === 2) {
             isMultiTouch = true;
             
-            // Cancelar timer de edición
+            // Cancelar timer y drag
             if (touchTimer) {
                 clearTimeout(touchTimer);
                 touchTimer = null;
             }
-            
-            // Cancelar drag si estaba activo
             EditorState.isDragging = false;
             
             // Guardar estado inicial
             const currentTransform = getCurrentTransform();
-            initialScale = currentTransform.scale;
-            initialRotation = currentTransform.rotation;
-            initialDistance = getDistance(touches[0], touches[1]);
-            initialAngle = getAngle(touches[0], touches[1]);
+            transformState = {
+                initialScale: currentTransform.scale,
+                initialRotation: currentTransform.rotation,
+                initialDistance: getDistance(touches[0], touches[1]),
+                initialAngle: getAngle(touches[0], touches[1]),
+                lastScale: currentTransform.scale,
+                lastRotation: currentTransform.rotation
+            };
             
-            element.style.opacity = '0.8';
+            element.style.transition = 'opacity 0.1s ease';
+            element.style.opacity = '0.9';
             
-            console.log('👆👆 Gesto multi-touch iniciado');
+            // ============================================
+            // TOUCH MOVE - Actualizar transformación en tiempo real
+            // ============================================
+            touchMoveListener = (moveEvent) => {
+                if (!isMultiTouch || moveEvent.touches.length !== 2) return;
+                
+                moveEvent.preventDefault();
+                moveEvent.stopPropagation();
+                
+                const t1 = moveEvent.touches[0];
+                const t2 = moveEvent.touches[1];
+                
+                // Calcular escala con suavizado
+                const currentDistance = getDistance(t1, t2);
+                const scaleRatio = currentDistance / transformState.initialDistance;
+                let newScale = transformState.initialScale * scaleRatio;
+                
+                // Límites de escala más amplios
+                newScale = Math.max(0.2, Math.min(6, newScale));
+                
+                // Suavizado de escala para evitar saltos
+                newScale = transformState.lastScale + (newScale - transformState.lastScale) * 0.8;
+                transformState.lastScale = newScale;
+                
+                // Calcular rotación con suavizado
+                const currentAngle = getAngle(t1, t2);
+                const angleDiff = currentAngle - transformState.initialAngle;
+                let newRotation = transformState.initialRotation + angleDiff;
+                
+                // Suavizado de rotación
+                newRotation = transformState.lastRotation + (newRotation - transformState.lastRotation) * 0.8;
+                transformState.lastRotation = newRotation;
+                
+                // Aplicar transformación fluida
+                applyTransform(newScale, newRotation);
+            };
+            
+            // ============================================
+            // TOUCH END - Finalizar transformación
+            // ============================================
+            touchEndListener = (endEvent) => {
+                if (endEvent.touches.length < 2) {
+                    element.style.opacity = '1';
+                    element.style.transition = '';
+                    isMultiTouch = false;
+                    
+                    // Limpiar listeners
+                    document.removeEventListener('touchmove', touchMoveListener);
+                    document.removeEventListener('touchend', touchEndListener);
+                    
+                    saveState();
+                    console.log('✅ Transformación aplicada');
+                }
+            };
+            
+            // Agregar listeners con passive: false para preventDefault
+            document.addEventListener('touchmove', touchMoveListener, { passive: false });
+            document.addEventListener('touchend', touchEndListener, { passive: false });
         }
     }, { passive: false });
     
-    // TOUCH MOVE - Actualizar transformación
-    element.addEventListener('touchmove', (e) => {
-        if (isMultiTouch && e.touches.length === 2) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            
-            // Calcular nueva escala
-            const currentDistance = getDistance(touch1, touch2);
-            const scaleChange = currentDistance / initialDistance;
-            let newScale = initialScale * scaleChange;
-            
-            // Limitar escala
-            newScale = Math.max(0.3, Math.min(5, newScale));
-            
-            // Calcular nueva rotación
-            const currentAngle = getAngle(touch1, touch2);
-            const rotationChange = currentAngle - initialAngle;
-            let newRotation = initialRotation + rotationChange;
-            
-            // Aplicar transformación
-            applyTransform(newScale, newRotation);
-        }
-    }, { passive: false });
-    
-    // TOUCH END - Finalizar transformación
-    element.addEventListener('touchend', (e) => {
-        if (isMultiTouch) {
-            element.style.opacity = '1';
-            isMultiTouch = false;
-            saveState();
-            console.log('✅ Transformación aplicada');
-        }
-        
+    // TOUCH END en el elemento
+    element.addEventListener('touchend', () => {
         if (touchTimer) {
             clearTimeout(touchTimer);
             touchTimer = null;
@@ -601,11 +610,10 @@ function setupElementEvents(element) {
     });
 }
 
-console.log('✅ Primera mitad del editor cargada con gestos táctiles');
+console.log('✅ Primera mitad optimizada cargada - Gestos fluidos activados');
 
 // ============================================
-// EDITOR MAIN - SEGUNDA MITAD
-// Funciones auxiliares, estado y exportación
+// EDITOR MAIN - SEGUNDA MITAD OPTIMIZADA
 // ============================================
 
 // ============================================
@@ -650,6 +658,11 @@ function startDrag(e, element) {
         y: (e.clientY || e.pageY) - rect.top
     };
     
+    // Usar requestAnimationFrame para drag más fluido
+    let rafId = null;
+    let lastX = null;
+    let lastY = null;
+    
     const onMove = (moveEvent) => {
         if (!EditorState.isDragging) return;
         
@@ -660,20 +673,39 @@ function startDrag(e, element) {
         
         if (!clientX || !clientY) return;
         
-        const newX = clientX - canvasRect.left - EditorState.dragOffset.x;
-        const newY = clientY - canvasRect.top - EditorState.dragOffset.y;
+        // Guardar posición para el siguiente frame
+        lastX = clientX;
+        lastY = clientY;
         
-        element.style.left = Math.max(0, Math.min(newX, canvasRect.width - rect.width)) + 'px';
-        element.style.top = Math.max(0, Math.min(newY, canvasRect.height - rect.height)) + 'px';
+        // Cancelar frame anterior si existe
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+        }
+        
+        // Actualizar posición en el siguiente frame
+        rafId = requestAnimationFrame(() => {
+            const newX = lastX - canvasRect.left - EditorState.dragOffset.x;
+            const newY = lastY - canvasRect.top - EditorState.dragOffset.y;
+            
+            element.style.left = Math.max(0, Math.min(newX, canvasRect.width - rect.width)) + 'px';
+            element.style.top = Math.max(0, Math.min(newY, canvasRect.height - rect.height)) + 'px';
+        });
     };
     
     const onEnd = () => {
         EditorState.isDragging = false;
         element.classList.remove('dragging');
+        
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+        
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onEnd);
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
+        
         saveState();
     };
     
@@ -747,20 +779,24 @@ function restoreState(state) {
             el.className = 'canvas-element text-element';
             el.contentEditable = true;
             el.textContent = elData.content;
-            el.style.position = 'absolute';
-            el.style.left = elData.left;
-            el.style.top = elData.top;
-            el.style.fontSize = elData.fontSize;
-            el.style.fontFamily = elData.fontFamily;
-            el.style.color = elData.color;
-            el.style.fontWeight = 'bold';
-            el.style.padding = '8px';
-            el.style.cursor = 'move';
-            el.style.zIndex = '10';
-            el.style.userSelect = 'none';
-            el.style.WebkitUserSelect = 'none';
-            el.style.transform = elData.transform || 'scale(1) rotate(0deg)';
-            el.style.transformOrigin = 'center center';
+            el.style.cssText = `
+                position: absolute;
+                left: ${elData.left};
+                top: ${elData.top};
+                font-size: ${elData.fontSize};
+                font-family: ${elData.fontFamily};
+                color: ${elData.color};
+                font-weight: bold;
+                padding: 8px;
+                cursor: move;
+                z-index: 10;
+                user-select: none;
+                -webkit-user-select: none;
+                transform: ${elData.transform || 'scale(1) rotate(0deg)'};
+                transform-origin: center center;
+                touch-action: none;
+                will-change: transform;
+            `;
             
             setupElementEvents(el);
             EditorState.canvas.appendChild(el);
@@ -768,22 +804,28 @@ function restoreState(state) {
         } else if (elData.type === 'image') {
             const el = document.createElement('div');
             el.className = 'canvas-element image-element';
-            el.style.position = 'absolute';
-            el.style.left = elData.left;
-            el.style.top = elData.top;
-            el.style.width = elData.width;
-            el.style.height = elData.height;
-            el.style.cursor = 'move';
-            el.style.zIndex = '10';
-            el.style.transform = elData.transform || 'scale(1) rotate(0deg)';
-            el.style.transformOrigin = 'center center';
+            el.style.cssText = `
+                position: absolute;
+                left: ${elData.left};
+                top: ${elData.top};
+                width: ${elData.width};
+                height: ${elData.height};
+                cursor: move;
+                z-index: 10;
+                transform: ${elData.transform || 'scale(1) rotate(0deg)'};
+                transform-origin: center center;
+                touch-action: none;
+                will-change: transform;
+            `;
             
             const img = document.createElement('img');
             img.src = elData.content;
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
-            img.style.pointerEvents = 'none';
+            img.style.cssText = `
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                pointer-events: none;
+            `;
             img.draggable = false;
             el.appendChild(img);
             
@@ -869,7 +911,6 @@ function toggleTheme() {
     }
     
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    console.log('🌓 Tema:', isDark ? 'oscuro' : 'claro');
 }
 
 // ============================================
@@ -930,7 +971,6 @@ async function confirmSave() {
         const saveModal = document.getElementById('save-modal');
         if (saveModal) saveModal.classList.remove('active');
         
-        // Verificar DOMExporter
         if (!window.DOMExporter) {
             throw new Error('DOMExporter no está cargado. Verifica que export-dom.js esté incluido.');
         }
@@ -966,7 +1006,6 @@ async function confirmSave() {
         designs.push(designData);
         localStorage.setItem('crk2_designs', JSON.stringify(designs));
         
-        // Mostrar modal de éxito
         const successModal = document.getElementById('success-modal');
         const successMessage = document.getElementById('success-message');
         
@@ -985,10 +1024,10 @@ async function confirmSave() {
 }
 
 // ============================================
-// INICIALIZACIÓN
+// INICIALIZACIÓN OPTIMIZADA
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Inicializando editor...');
+    console.log('🚀 Inicializando editor optimizado...');
     
     EditorState.canvas = document.getElementById('editor-canvas');
     
@@ -996,6 +1035,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('❌ No se encontró el canvas');
         return;
     }
+    
+    // Optimizar canvas para touch
+    EditorState.canvas.style.touchAction = 'none';
     
     loadConfig();
     
@@ -1087,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     saveState();
     
-    console.log('✅ Editor inicializado correctamente con gestos táctiles');
+    console.log('✅ Editor optimizado inicializado - 60 FPS ready 🚀');
 });
 
-console.log('✅ Segunda mitad del editor cargada');
+console.log('✅ Segunda mitad optimizada cargada');
